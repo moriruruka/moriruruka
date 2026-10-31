@@ -8,14 +8,14 @@
 
 </div>
 
-<img src="./assets/stats.svg" align="right" width="68%" alt="GitHub stats">
-<img src="./assets/illus-chibi.png" align="left" width="25.5%" alt="">
-<img src="./assets/illus-sticker.gif" align="left" width="25.5%" alt="">
+<img src="./assets/stats.svg" align="right" width="70%" alt="GitHub stats">
+<img src="./assets/card-chibi.png" align="left" width="22.5%" alt="">
+<img src="./assets/card-sticker.webp" align="left" width="22.5%" alt="">
 <br clear="all">
 
 <br>
 
-<img src="./assets/illus-tower.png" width="7%" align="left" alt="">
+<img src="./assets/rail.png" width="7%" align="left" alt="">
 
 ## 兴趣
 
@@ -25,7 +25,7 @@
 <br><br>
 
 <div align="center">
-  <img src="./assets/illus-face.jpg" width="88%" alt="">
+  <img src="./assets/face.webp" width="84%" alt="">
 </div>
 
 <br><br>
