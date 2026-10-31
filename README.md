@@ -8,12 +8,15 @@
 
 </div>
 
-<p align="center">
-  <img src="./assets/illus-tower.png" width="108" alt="">
-  <img src="./assets/stats.svg" width="76%" alt="GitHub stats">
-</p>
+<br>
 
----
+<img src="./assets/illus-tower.png" width="10%" align="left" alt="">
+
+<div align="center">
+  <img src="./assets/stats.svg" width="87%" alt="GitHub stats">
+</div>
+
+<br><br>
 
 ## 兴趣
 
@@ -21,8 +24,10 @@
 目前正在探索 **PCR 智能出刀工具**。
 
 <div align="center">
-  <img src="./assets/illus-sticker.gif" width="150" alt="">
+  <img src="./assets/illus-sticker.gif" width="160" alt="">
 </div>
+
+<br><br>
 
 ## 技术栈
 
@@ -39,12 +44,16 @@
 
 </div>
 
----
+<br><br>
 
 <div align="center">
-  <img src="./assets/illus-eyes.jpg" width="100%" alt="">
+  <img src="./assets/illus-eyes.jpg" width="87%" alt="">
 </div>
+
+<br>
 
 <div align="center">
   <sub>把信号变成信息，把信息变成别人用得上的工具。</sub>
 </div>
+
+<br clear="all">
