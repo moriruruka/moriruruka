@@ -8,23 +8,24 @@
 
 </div>
 
+<img src="./assets/stats.svg" align="right" width="68%" alt="GitHub stats">
+<img src="./assets/illus-chibi.png" align="left" width="25.5%" alt="">
+<img src="./assets/illus-sticker.gif" align="left" width="25.5%" alt="">
+<br clear="all">
+
 <br>
 
-<img src="./assets/illus-tower.png" width="10%" align="left" alt="">
-
-<div align="center">
-  <img src="./assets/stats.svg" width="87%" alt="GitHub stats">
-</div>
-
-<br><br>
+<img src="./assets/illus-tower.png" width="7%" align="left" alt="">
 
 ## 兴趣
 
 业余喜欢做一些实用小工具，比如 Princess Connect! Re:Dive（PCR）的**自助作业查询**、**插画检索**……
 目前正在探索 **PCR 智能出刀工具**。
 
+<br><br>
+
 <div align="center">
-  <img src="./assets/illus-sticker.gif" width="160" alt="">
+  <img src="./assets/illus-face.jpg" width="88%" alt="">
 </div>
 
 <br><br>
@@ -44,16 +45,6 @@
 
 </div>
 
-<br><br>
-
-<div align="center">
-  <img src="./assets/illus-eyes.jpg" width="87%" alt="">
-</div>
-
-<br>
-
 <div align="center">
   <sub>把信号变成信息，把信息变成别人用得上的工具。</sub>
 </div>
-
-<br clear="all">
