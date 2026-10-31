@@ -8,13 +8,10 @@
 
 </div>
 
-<div align="center">
-  <img src="./assets/illus-candy.jpg" width="320" alt="">
-</div>
-
-<div align="center">
-  <img src="./assets/stats.svg" width="100%" alt="GitHub stats">
-</div>
+<p align="center">
+  <img src="./assets/illus-tower.png" width="108" alt="">
+  <img src="./assets/stats.svg" width="76%" alt="GitHub stats">
+</p>
 
 ---
 

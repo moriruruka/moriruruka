@@ -36,7 +36,8 @@ OTHER = ("其他", "#334155")
 FONT = "'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif"
 MONO = "'Cascadia Code','JetBrains Mono',Consolas,'Courier New',monospace"
 
-W, H = 1200, 300
+W, H = 760, 500
+PAD = 44
 
 
 def get(url, token=None):
@@ -86,7 +87,7 @@ def build(d):
     colors = dict(LANGS)
     stamp = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
 
-    # ---- stat blocks ----
+    # ---- 2x2 stat grid ----
     stats = [
         ("公开仓库", str(d["repos"]), "#22d3ee"),
         ("Star 总数", str(d["stars"]), "#a78bfa"),
@@ -95,33 +96,41 @@ def build(d):
     ]
     blocks = []
     for i, (label, value, color) in enumerate(stats):
-        x = 44 + i * 300
+        x = PAD + (i % 2) * 356
+        top = 92 + (i // 2) * 104
         blocks.append(
-            f'<rect x="{x}" y="86" width="26" height="3" rx="1.5" fill="{color}" opacity="0.85"/>'
-            f'<text x="{x}" y="136" font-family="{FONT}" font-size="47" font-weight="700" '
+            f'<rect x="{x}" y="{top}" width="24" height="3" rx="1.5" fill="{color}" opacity="0.85"/>'
+            f'<text x="{x}" y="{top + 44}" font-family="{FONT}" font-size="40" font-weight="700" '
             f'fill="#e6edf3" letter-spacing="-0.6">{value}</text>'
-            f'<text x="{x}" y="164" font-family="{FONT}" font-size="14.5" fill="#6b7c96">{label}</text>'
+            f'<text x="{x}" y="{top + 68}" font-family="{FONT}" font-size="14" fill="#6b7c96">{label}</text>'
         )
 
-    # ---- language bar ----
-    x0, x1, bar_y, bar_h = 44, 1156, 216, 10
+    # ---- stacked language bar ----
+    x0, x1, bar_y, bar_h = PAD, W - PAD, 322, 9
     span = x1 - x0
     cursor = x0
-    segs, legend = [], []
-    for i, (name, pct) in enumerate(d["langs"]):
-        w = span * pct
+    segs = []
+    for name, pct in d["langs"]:
         color = colors.get(name, OTHER[1])
+        w = span * pct
         segs.append(f'<rect x="{f(cursor)}" y="{bar_y}" width="{f(w)}" height="{bar_h}" '
                     f'fill="{color}" opacity="0.92"/>')
         cursor += w
 
-        lx = 44 + i * 158
-        legend.append(
-            f'<circle cx="{lx + 4}" cy="256" r="4" fill="{color}" opacity="0.92"/>'
-            f'<text x="{lx + 16}" y="260" font-family="{FONT}" font-size="14" fill="#93a4bd">'
-            f'{name}</text>'
-            f'<text x="{lx + 16}" y="279" font-family="{MONO}" font-size="12" fill="#5b6b85">'
-            f'{pct * 100:.1f}%</text>'
+    # ---- language rows ----
+    track_x, track_w = 196, 424
+    rows = []
+    for i, (name, pct) in enumerate(d["langs"]):
+        color = colors.get(name, OTHER[1])
+        y = 362 + i * 30
+        rows.append(
+            f'<circle cx="{PAD + 4}" cy="{y - 4}" r="4" fill="{color}" opacity="0.92"/>'
+            f'<text x="{PAD + 16}" y="{y}" font-family="{FONT}" font-size="13.5" fill="#93a4bd">{name}</text>'
+            f'<rect x="{track_x}" y="{y - 10}" width="{track_w}" height="6" rx="3" fill="#16233a"/>'
+            f'<rect x="{track_x}" y="{y - 10}" width="{f(track_w * pct)}" height="6" rx="3" '
+            f'fill="{color}" opacity="0.9"/>'
+            f'<text x="{W - PAD}" y="{y}" text-anchor="end" font-family="{MONO}" font-size="12" '
+            f'fill="#5b6b85">{pct * 100:.1f}%</text>'
         )
 
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" aria-label="GitHub stats for {d["login"]}">
@@ -143,29 +152,30 @@ def build(d):
       <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
     </linearGradient>
     <clipPath id="round"><rect x="0" y="0" width="{W}" height="{H}" rx="18" ry="18"/></clipPath>
-    <clipPath id="bar"><rect x="44" y="216" width="1112" height="10" rx="5"/></clipPath>
+    <clipPath id="bar"><rect x="{x0}" y="{bar_y}" width="{span}" height="{bar_h}" rx="4.5"/></clipPath>
   </defs>
 
   <g clip-path="url(#round)">
     <rect width="{W}" height="{H}" fill="url(#bg)"/>
-    <ellipse cx="1080" cy="40" rx="320" ry="200" fill="url(#glow)"/>
+    <ellipse cx="700" cy="30" rx="240" ry="180" fill="url(#glow)"/>
     <g opacity="0.045" stroke="#7dd3fc" stroke-width="1">
-      <path d="M0 74 H1200 M0 148 H1200 M0 222 H1200"/>
-      <path d="M142 0 V300 M284 0 V300 M426 0 V300 M568 0 V300 M710 0 V300 M852 0 V300 M994 0 V300 M1136 0 V300"/>
+      <path d="M0 78 H760 M0 182 H760 M0 286 H760 M0 390 H760"/>
+      <path d="M142 0 V500 M284 0 V500 M426 0 V500 M568 0 V500 M710 0 V500"/>
     </g>
-    <rect x="44" y="34" width="2.5" height="52" rx="1.25" fill="url(#edge)"/>
+    <rect x="{PAD}" y="34" width="2.5" height="46" rx="1.25" fill="url(#edge)"/>
 
-    <text x="72" y="52" font-family="{MONO}" font-size="11.5" letter-spacing="3.6" fill="#5b6b85">GITHUB STATS</text>
-    <text x="1156" y="52" text-anchor="end" font-family="{MONO}" font-size="11.5" fill="#41506a">updated {stamp}</text>
+    <text x="{PAD + 28}" y="50" font-family="{MONO}" font-size="11.5" letter-spacing="3.6" fill="#5b6b85">GITHUB STATS</text>
+    <text x="{W - PAD}" y="50" text-anchor="end" font-family="{MONO}" font-size="11.5" fill="#41506a">updated {stamp}</text>
+    <rect x="{PAD}" y="64" width="{W - 2 * PAD}" height="1" fill="#1b2740"/>
 
     {"".join(blocks)}
 
-    <text x="44" y="201" font-family="{FONT}" font-size="12.5" letter-spacing="1.5" fill="#4c5a72">语言分布</text>
-    <rect x="128" y="196" width="{W - 172}" height="1" fill="#1b2740"/>
+    <text x="{PAD}" y="310" font-family="{FONT}" font-size="12.5" letter-spacing="1.5" fill="#4c5a72">语言分布</text>
+    <rect x="128" y="305" width="{W - PAD - 128}" height="1" fill="#1b2740"/>
     <g clip-path="url(#bar)">
       {"".join(segs)}
     </g>
-    {"".join(legend)}
+    {"".join(rows)}
   </g>
 
   <rect x="0.5" y="0.5" width="{W - 1}" height="{H - 1}" rx="18" ry="18" fill="none" stroke="#1e2d45" stroke-width="1"/>
