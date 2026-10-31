@@ -1,0 +1,48 @@
+name: stats
+
+# Keeps assets/stats.svg in sync with the live numbers (repos / stars / languages).
+# The commit is authored with Aria_Luna's identity, so it shows up as a normal
+# commit of hers instead of adding a github-actions[bot] contributor entry.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"       # 03:17 UTC = 11:17 北京时间
+  workflow_dispatch:
+  push:
+    paths:
+      - "tools/gen_stats.py"
+      - ".github/workflows/stats.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stats
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Regenerate the card
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python tools/gen_stats.py --user moriruruka --out assets/stats.svg
+
+      - name: Commit if it changed
+        run: |
+          git config user.name "Aria_Luna"
+          git config user.email "80839392+moriruruka@users.noreply.github.com"
+          if git diff --quiet -- assets/stats.svg; then
+            echo "stats unchanged, nothing to commit"
+            exit 0
+          fi
+          git add assets/stats.svg
+          git commit -m "chore: refresh stats card"
+          git push
