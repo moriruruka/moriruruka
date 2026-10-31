@@ -15,6 +15,7 @@ so a flaky network never breaks the profile page.
 import argparse
 import json
 import os
+import re
 import sys
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -40,7 +41,7 @@ W, H = 760, 500
 PAD = 44
 
 
-def get(url, token=None):
+def _open(url, token=None):
     req = urllib.request.Request(url, headers={
         "User-Agent": "moriruruka-profile-stats",
         "Accept": "application/vnd.github+json",
@@ -48,7 +49,30 @@ def get(url, token=None):
     if token:
         req.add_header("Authorization", f"Bearer {token}")
     with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)
+        return json.load(r), r.headers
+
+
+def get(url, token=None):
+    return _open(url, token)[0]
+
+
+def commit_count(repo, token):
+    """Default-branch commit count, read off the Link header's last page."""
+    try:
+        _, headers = _open(
+            f'{API}/repos/{repo["owner"]["login"]}/{repo["name"]}/commits'
+            f'?per_page=1&sha={repo["default_branch"]}', token)
+    except Exception:
+        return 0
+    m = re.search(r'[?&]page=(\d+)>;\s*rel="last"', headers.get("Link") or "")
+    return int(m.group(1)) if m else 1
+
+
+def search_count(q, token):
+    try:
+        return get(f"{API}/search/issues?q={q}&per_page=1", token).get("total_count", 0)
+    except Exception:
+        return 0
 
 
 def f(x):
@@ -59,12 +83,17 @@ def collect(user, token):
     u = get(f"{API}/users/{user}", token)
     repos = get(f"{API}/users/{user}/repos?per_page=100&type=owner", token)
 
-    stars = 0
+    stars = forks = commits = 0
     words = {}
+    ranked_repos = []
     for r in repos:
         if r.get("fork"):
             continue
-        stars += r.get("stargazers_count", 0)
+        s = r.get("stargazers_count", 0)
+        stars += s
+        forks += r.get("forks_count", 0)
+        ranked_repos.append((r["name"], s))
+        commits += commit_count(r, token)
         try:
             for k, v in get(r["languages_url"], token).items():
                 words[k] = words.get(k, 0) + v
@@ -79,34 +108,52 @@ def collect(user, token):
     if rest:
         langs.append((OTHER[0], rest / total))
 
-    return dict(login=u["login"], repos=u["public_repos"], stars=stars,
-                followers=u["followers"], year=u["created_at"][:4], langs=langs)
+    ranked_repos.sort(key=lambda kv: (-kv[1], kv[0]))
+
+    return dict(login=u["login"], repos=u["public_repos"], stars=stars, forks=forks,
+                followers=u["followers"], following=u["following"], year=u["created_at"][:4],
+                commits=commits, langs=langs,
+                prs=search_count(f"author:{user}+type:pr", token),
+                issues=search_count(f"author:{user}+type:issue", token),
+                top=ranked_repos[:4], maxstars=max([s for _, s in ranked_repos] or [1]))
 
 
 def build(d):
     colors = dict(LANGS)
     stamp = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
 
-    # ---- 2x2 stat grid ----
+    # ---- headline numbers ------------------------------------------------
     stats = [
         ("公开仓库", str(d["repos"]), "#22d3ee"),
         ("Star 总数", str(d["stars"]), "#a78bfa"),
-        ("关注者", str(d["followers"]), "#60a5fa"),
-        ("始于", d["year"], "#fbbf24"),
+        ("提交总数", str(d["commits"]), "#60a5fa"),
+        ("关注者", str(d["followers"]), "#fbbf24"),
     ]
     blocks = []
     for i, (label, value, color) in enumerate(stats):
-        x = PAD + (i % 2) * 356
-        top = 92 + (i // 2) * 104
+        x = PAD + i * 168
         blocks.append(
-            f'<rect x="{x}" y="{top}" width="24" height="3" rx="1.5" fill="{color}" opacity="0.85"/>'
-            f'<text x="{x}" y="{top + 44}" font-family="{FONT}" font-size="40" font-weight="700" '
+            f'<rect x="{x}" y="86" width="22" height="3" rx="1.5" fill="{color}" opacity="0.85"/>'
+            f'<text x="{x}" y="128" font-family="{FONT}" font-size="36" font-weight="700" '
             f'fill="#e6edf3" letter-spacing="-0.6">{value}</text>'
-            f'<text x="{x}" y="{top + 68}" font-family="{FONT}" font-size="14" fill="#6b7c96">{label}</text>'
+            f'<text x="{x}" y="150" font-family="{FONT}" font-size="13.5" fill="#6b7c96">{label}</text>'
         )
 
-    # ---- stacked language bar ----
-    x0, x1, bar_y, bar_h = PAD, W - PAD, 322, 9
+    # ---- secondary numbers ----------------------------------------------
+    minor = [("PR", str(d["prs"])), ("Issue", str(d["issues"])),
+             ("Fork", str(d["forks"])), ("关注中", str(d["following"]))]
+    chips = []
+    for i, (label, value) in enumerate(minor):
+        x = PAD + i * 168
+        chips.append(
+            f'<rect x="{x}" y="172" width="96" height="26" rx="13" fill="#101a2c" stroke="#1e2d45"/>'
+            f'<text x="{x + 13}" y="189.5" font-family="{FONT}" font-size="11.5" fill="#5b6b85">{label}</text>'
+            f'<text x="{x + 83}" y="190" text-anchor="end" font-family="{MONO}" font-size="13" '
+            f'font-weight="700" fill="#cbd8ea">{value}</text>'
+        )
+
+    # ---- stacked language bar -------------------------------------------
+    x0, x1, bar_y, bar_h = PAD, W - PAD, 240, 8
     span = x1 - x0
     cursor = x0
     segs = []
@@ -117,23 +164,40 @@ def build(d):
                     f'fill="{color}" opacity="0.92"/>')
         cursor += w
 
-    # ---- language rows ----
-    track_x, track_w = 196, 424
-    rows = []
-    for i, (name, pct) in enumerate(d["langs"]):
+    # ---- language legend, one compact flowing line -----------------------
+    legend = []
+    lx = x0
+    for name, pct in d["langs"]:
         color = colors.get(name, OTHER[1])
-        y = 362 + i * 30
+        label = f"{name}"
+        value = f"{pct * 100:.1f}%"
+        w_label = sum(12.0 if ord(ch) > 0x2E80 else 7.0 for ch in label)
+        w_value = len(value) * 6.6
+        legend.append(
+            f'<circle cx="{f(lx + 4)}" cy="274" r="3.6" fill="{color}"/>'
+            f'<text x="{f(lx + 13)}" y="278" font-family="{FONT}" font-size="12" fill="#93a4bd">{label}</text>'
+            f'<text x="{f(lx + 13 + w_label + 7)}" y="278" font-family="{MONO}" '
+            f'font-size="11.5" fill="#5b6b85">{value}</text>'
+        )
+        lx += 13 + w_label + 7 + w_value + 20
+
+    # ---- top repositories by stars ---------------------------------------
+    track_x, track_w = 292, 330
+    rows = []
+    for i, (name, s) in enumerate(d["top"]):
+        y = 338 + i * 32
+        bar_w = track_w * (s / d["maxstars"]) if d["maxstars"] else 0
+        nm = name if len(name) <= 30 else name[:29] + "…"
         rows.append(
-            f'<circle cx="{PAD + 4}" cy="{y - 4}" r="4" fill="{color}" opacity="0.92"/>'
-            f'<text x="{PAD + 16}" y="{y}" font-family="{FONT}" font-size="13.5" fill="#93a4bd">{name}</text>'
-            f'<rect x="{track_x}" y="{y - 10}" width="{track_w}" height="6" rx="3" fill="#16233a"/>'
-            f'<rect x="{track_x}" y="{y - 10}" width="{f(track_w * pct)}" height="6" rx="3" '
-            f'fill="{color}" opacity="0.9"/>'
-            f'<text x="{W - PAD}" y="{y}" text-anchor="end" font-family="{MONO}" font-size="12" '
-            f'fill="#5b6b85">{pct * 100:.1f}%</text>'
+            f'<text x="{PAD}" y="{y}" font-family="{FONT}" font-size="12.5" fill="#93a4bd">{nm}</text>'
+            f'<rect x="{track_x}" y="{y - 9}" width="{track_w}" height="6" rx="3" fill="#16233a"/>'
+            f'<rect x="{track_x}" y="{y - 9}" width="{f(bar_w)}" height="6" rx="3" '
+            f'fill="#22d3ee" opacity="0.75"/>'
+            f'<text x="{W - PAD}" y="{y}" text-anchor="end" font-family="{MONO}" font-size="11.5" '
+            f'fill="#5b6b85">{s}</text>'
         )
 
-    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" aria-label="GitHub stats for {d["login"]}">
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" aria-label="GitHub stats for {d["login"]}: {d["repos"]} repos, {d["stars"]} stars, {d["commits"]} commits, {d["followers"]} followers">
   <title>GitHub stats — {d["login"]}</title>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
@@ -152,7 +216,7 @@ def build(d):
       <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
     </linearGradient>
     <clipPath id="round"><rect x="0" y="0" width="{W}" height="{H}" rx="18" ry="18"/></clipPath>
-    <clipPath id="bar"><rect x="{x0}" y="{bar_y}" width="{span}" height="{bar_h}" rx="4.5"/></clipPath>
+    <clipPath id="bar"><rect x="{x0}" y="{bar_y}" width="{span}" height="{bar_h}" rx="4"/></clipPath>
   </defs>
 
   <g clip-path="url(#round)">
@@ -169,13 +233,20 @@ def build(d):
     <rect x="{PAD}" y="64" width="{W - 2 * PAD}" height="1" fill="#1b2740"/>
 
     {"".join(blocks)}
+    {"".join(chips)}
 
-    <text x="{PAD}" y="310" font-family="{FONT}" font-size="12.5" letter-spacing="1.5" fill="#4c5a72">语言分布</text>
-    <rect x="128" y="305" width="{W - PAD - 128}" height="1" fill="#1b2740"/>
-    <g clip-path="url(#bar)">
-      {"".join(segs)}
-    </g>
+    <text x="{PAD}" y="222" font-family="{FONT}" font-size="12" letter-spacing="1.5" fill="#4c5a72">语言分布</text>
+    <rect x="128" y="217" width="{W - PAD - 128}" height="1" fill="#1b2740"/>
+    <g clip-path="url(#bar)">{"".join(segs)}</g>
+    {"".join(legend)}
+
+    <text x="{PAD}" y="312" font-family="{FONT}" font-size="12" letter-spacing="1.5" fill="#4c5a72">热门仓库</text>
+    <rect x="128" y="307" width="{W - PAD - 128}" height="1" fill="#1b2740"/>
     {"".join(rows)}
+
+    <rect x="{PAD}" y="464" width="{W - 2 * PAD}" height="1" fill="#1b2740"/>
+    <text x="{PAD}" y="484" font-family="{FONT}" font-size="11.5" fill="#41506a">数据来自 GitHub API</text>
+    <text x="{W - PAD}" y="484" text-anchor="end" font-family="{FONT}" font-size="11.5" fill="#41506a">每月 1 / 15 日自动刷新</text>
   </g>
 
   <rect x="0.5" y="0.5" width="{W - 1}" height="{H - 1}" rx="18" ry="18" fill="none" stroke="#1e2d45" stroke-width="1"/>
@@ -199,8 +270,8 @@ def main():
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     with open(a.out, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(svg)
-    print(f"stats: wrote {a.out} ({len(svg)} bytes) "
-          f"repos={data['repos']} stars={data['stars']} followers={data['followers']}")
+    print(f"stats: wrote {a.out} ({len(svg)} bytes) repos={data['repos']} stars={data['stars']} "
+          f"commits={data['commits']} followers={data['followers']} prs={data['prs']}")
     return 0
 
 

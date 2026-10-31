@@ -6,7 +6,7 @@ name: stats
 
 on:
   schedule:
-    - cron: "17 3 * * *"       # 03:17 UTC = 11:17 北京时间
+    - cron: "0 0 1,15 * *"       # 每月 1 / 15 号 00:00 UTC＝北京时间 08:00
   workflow_dispatch:
   push:
     paths:
