@@ -79,14 +79,6 @@ def push_with_fallback(env: dict[str, str]) -> tuple[int, str]:
 
 
 def commit_and_push(push: bool) -> int:
-    code, diff = git("status", "--porcelain", "--", "assets/stats.svg")
-    if code != 0:
-        print(diff)
-        return 1
-    if not diff:
-        print("stats unchanged, nothing to commit")
-        return 0
-
     env = dict(os.environ)
     env.update(
         GIT_AUTHOR_NAME=AUTHOR_NAME,
@@ -94,6 +86,20 @@ def commit_and_push(push: bool) -> int:
         GIT_COMMITTER_NAME=AUTHOR_NAME,
         GIT_COMMITTER_EMAIL=AUTHOR_EMAIL,
     )
+
+    code, diff = git("status", "--porcelain", "--", "assets/stats.svg")
+    if code != 0:
+        print(diff)
+        return 1
+    if not diff:
+        print("stats unchanged, nothing to commit")
+        if push:
+            code, out = push_with_fallback(env)
+            print(out)
+            if code != 0:
+                return 1
+        return 0
+
     code, out = git("add", "--", "assets/stats.svg", env=env)
     if code != 0:
         print(out)
