@@ -1,17 +1,14 @@
 name: stats
 
-# Keeps assets/stats.svg in sync with the live numbers (repos / stars / languages).
-# The commit is authored with Aria_Luna's identity, so it shows up as a normal
-# commit of hers instead of adding a github-actions[bot] contributor entry.
+# Regenerates assets/stats.svg from the live GitHub numbers (repos / stars / languages).
+#
+# Manual only: GitHub records scheduled (cron) runs as github-actions[bot], and this
+# repository must not carry any bot attribution. For a fixed twice-monthly refresh,
+# run the local script `tools/update_stats.py` from Windows Task Scheduler instead
+# (see the notes in that file). Manual runs here are performed by the owner.
 
 on:
-  schedule:
-    - cron: "0 0 1,15 * *"       # 每月 1 / 15 号 00:00 UTC＝北京时间 08:00
   workflow_dispatch:
-  push:
-    paths:
-      - "tools/gen_stats.py"
-      - ".github/workflows/stats.yml"
 
 permissions:
   contents: write
